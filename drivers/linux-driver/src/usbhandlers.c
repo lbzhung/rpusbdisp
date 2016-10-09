@@ -42,7 +42,7 @@ static int _kthread_usb_status_poller_proc(void *data);
 static volatile int _working_flag = 0;
 
 
-#define RPUSBDISP_STATUS_BUFFER_SIZE   32
+#define RPUSBDISP_STATUS_BUFFER_SIZE   11
 
 
 struct rpusbdisp_disp_ticket_bundle {
@@ -195,7 +195,7 @@ static void _on_parse_status_packet(struct rpusbdisp_dev *dev)
 
     
         touchhandler_send_ts_event(dev, le32_to_cpu(normalpacket->touch_x), le32_to_cpu(normalpacket->touch_y),  normalpacket->touch_status==RPUSBDISP_TOUCH_STATUS_PRESSED?1:0);
-//        printk("X:%d Y:%d S:%d\n", (int)le32_to_cpu(normalpacket->touch_x), (int)le32_to_cpu(normalpacket->touch_y), normalpacket->touch_status);
+        //printk(KERN_ERR "X:%d Y:%d S:%d\n", (int)le32_to_cpu(normalpacket->touch_x), (int)le32_to_cpu(normalpacket->touch_y), normalpacket->touch_status);
     }
 }
 
@@ -239,6 +239,15 @@ static void _on_display_transfer_finished(struct urb *urb)
     
 }
 
+//#define DUMP_MSG(/* const char * */ label,			\
+//		   /* const u8 * */ buf, /* unsigned */ length) do {	\
+//	if (length <= 512) {						\
+//		printk(KERN_ERR "%s, length %u:\n", label, length);		\
+//		print_hex_dump(KERN_ERR, "", DUMP_PREFIX_OFFSET,	\
+//			       16, 1, buf, length, 0);			\
+//	}								\
+//} while (0)
+
 static void _on_status_query_finished(struct urb *urb)
 {
 	struct rpusbdisp_dev *dev = urb->context;
@@ -254,6 +263,8 @@ static void _on_status_query_finished(struct urb *urb)
             // store the actual transfer size
             dev->status_in_buffer_recvsize = urb->actual_length;
             
+            //printk(KERN_ERR "start query callback %d\n", urb->actual_length);
+            //DUMP_MSG("data", dev->status_in_buffer, dev->status_in_buffer_recvsize);
 
             _on_parse_status_packet(dev);
             // notify the waiters..
@@ -261,7 +272,9 @@ static void _on_status_query_finished(struct urb *urb)
             break;
         case -EPIPE:
           //  usb_clear_halt(dev->udev, usb_rcvintpipe(dev->udev, dev->status_in_ep_addr));
+            //printk(KERN_ERR "start query usb fail -EPIPE callback\n");
         default:
+            printk(KERN_ERR "start query usb fail callback\n");
             //++dev->urb_status_fail_count;
             dev->urb_status_fail_count = RPUSBDISP_STATUS_QUERY_RETRY_COUNT;
     }
@@ -302,7 +315,9 @@ static void _status_start_querying(struct rpusbdisp_dev * dev)
     
     //submit it
     status = usb_submit_urb(dev->urb_status_query, GFP_ATOMIC);
+    //printk(KERN_ERR "start query usb interval:%d\n", ep->desc.bInterval);
     if (status) {
+        printk(KERN_ERR "start query usb fail\n");
         if (status == -EPIPE) {
             usb_clear_halt(dev->udev, pipe);
         }

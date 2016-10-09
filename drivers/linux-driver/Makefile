@@ -13,7 +13,7 @@
 
 
 DRIVER_NAME := rp_usbdisplay
-KERNEL_SOURCE_DIR ?= /lib/modules/`uname -r`/build
+KERNEL_SOURCE_DIR ?= /home/bobo/code/linux-rpi-3.12.y
 
 EXTRA_CFLAGS += -I$(PWD)/src -I$(PWD)/../common
 
